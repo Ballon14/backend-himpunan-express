@@ -14,22 +14,28 @@ async function seed() {
     try {
         console.log('🌱 Starting database seeding...');
 
-        // 1. Admin User
-        const email = 'iqbal140605@gmail.com';
-        const existing = await db('users').where('email', email).first();
-        if (!existing) {
-            const hashedPassword = await bcrypt.hash('iqbal', 12);
-            await db('users').insert({
-                id: uuidv4(),
-                name: 'Iqbal',
-                email,
-                password: hashedPassword,
-                created_at: new Date(),
-                updated_at: new Date(),
-            });
-            console.log('✅ Admin user created successfully!');
-        } else {
-            console.log('✅ Admin user already exists. Skipping user creation.');
+        // 1. Admin Users
+        const admins = [
+            { email: 'iqbal140605@gmail.com', password: 'iqbal', name: 'Iqbal' },
+            { email: 'admin@hmtkbg.com', password: 'admin123', name: 'Admin HMTKBG' }
+        ];
+
+        for (const admin of admins) {
+            const existing = await db('users').where('email', admin.email).first();
+            if (!existing) {
+                const hashedPassword = await bcrypt.hash(admin.password, 12);
+                await db('users').insert({
+                    id: uuidv4(),
+                    name: admin.name,
+                    email: admin.email,
+                    password: hashedPassword,
+                    created_at: new Date(),
+                    updated_at: new Date(),
+                });
+                console.log(`✅ Admin user ${admin.email} created successfully!`);
+            } else {
+                console.log(`✅ Admin user ${admin.email} already exists. Skipping.`);
+            }
         }
 
         // Prompt clear existing data
