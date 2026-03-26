@@ -1,3 +1,5 @@
+// File: /backend-express/src/seed.js
+
 /**
  * Seed admin user into the database.
  * Usage: node src/seed.js
@@ -6,13 +8,10 @@ require('dotenv').config();
 
 const bcrypt = require('bcryptjs');
 const { v4: uuidv4 } = require('uuid');
-const db = require('./config/database');
-
-const { fakerID_ID: faker } = require('@faker-js/faker');
 
 async function seed() {
     try {
-        console.log('🌱 Starting database seeding...');
+        console.log(`🌱 Starting database seeding...`);
 
         // 1. Admin Users
         const admins = [
@@ -47,7 +46,7 @@ async function seed() {
         await db('anggotas').del();
 
         // 2. Anggotas
-        const jabatanOptions = ['Ketua', 'Wakil Ketua', 'Sekretaris', 'Bendahara', 'Koordinator Divisi', 'Anggota', null];
+        const anggotaOptions = ['Ketua', 'Wakil Ketua', 'Sekretaris', 'Bendahara', 'Koordinator Divisi', 'Anggota', null];
         const jurusanOptions = ['Teknik Informatika', 'Sistem Informasi', 'Teknik Elektro', 'Teknik Mesin', 'Teknik Sipil', 'Manajemen', 'Akuntansi'];
 
         const anggotasToInsert = Array.from({ length: 20 }).map(() => ({
@@ -56,7 +55,7 @@ async function seed() {
             nim: faker.string.numeric(10),
             jurusan: faker.helpers.arrayElement(jurusanOptions),
             angkatan: faker.number.int({ min: 2020, max: 2025 }).toString(),
-            jabatan: faker.helpers.arrayElement(jabatanOptions),
+            jabatan: faker.helpers.arrayElement(anggotaOptions),
             status_aktif: faker.datatype.boolean(0.85),
             foto: null,
             created_at: new Date(),
@@ -64,7 +63,6 @@ async function seed() {
         }));
         if (anggotasToInsert.length > 0) await db('anggotas').insert(anggotasToInsert);
         console.log(`✅ Seeded ${anggotasToInsert.length} anggotas.`);
-
 
         // 3. Berita
         const beritasToInsert = Array.from({ length: 10 }).map(() => {
@@ -79,13 +77,12 @@ async function seed() {
                 thumbnail: null,
                 status,
                 published_at: status === 'published' ? faker.date.recent({ days: 180 }) : null,
-                created_at: faker.date.recent({ days: 180 }),
+                created_at: faker.date.recent({ days: 90 }),
                 updated_at: new Date()
             };
         });
         if (beritasToInsert.length > 0) await db('beritas').insert(beritasToInsert);
         console.log(`✅ Seeded ${beritasToInsert.length} beritas.`);
-
 
         // 4. Program Kerja
         const prokerOptions = ['Webinar Teknologi', 'Workshop UI/UX Design', 'Bakti Sosial', 'Musyawarah Besar', 'Pelatihan Leadership', 'Seminar Nasional', 'Lomba Coding', 'Study Tour', 'Pengabdian Masyarakat'];
@@ -107,7 +104,6 @@ async function seed() {
         if (prokerToInsert.length > 0) await db('program_kerjas').insert(prokerToInsert);
         console.log(`✅ Seeded ${prokerToInsert.length} program_kerjas.`);
 
-
         // 5. Galeri
         const kategoriOptions = ['Kegiatan', 'Seminar', 'Workshop', 'Lomba', 'Sosial', 'Gathering'];
         const galeriToInsert = Array.from({ length: 15 }).map(() => ({
@@ -122,14 +118,13 @@ async function seed() {
         if (galeriToInsert.length > 0) await db('galeris').insert(galeriToInsert);
         console.log(`✅ Seeded ${galeriToInsert.length} galeris.`);
 
-
         // 6. Pesan (Auto increment ID, so no UUID)
         const pesanToInsert = Array.from({ length: 10 }).map(() => {
             const isRead = faker.datatype.boolean(0.4);
             return {
                 nama: faker.person.fullName(),
                 email: faker.datatype.boolean(0.8) ? faker.internet.email() : null,
-                isi_pesan: faker.lorem.paragraph(3),
+                isi_pesan: faker.lorem.paragraphs(3),
                 is_read: isRead,
                 read_at: isRead ? faker.date.recent({ days: 30 }) : null,
                 created_at: faker.date.recent({ days: 90 }),
@@ -137,8 +132,7 @@ async function seed() {
             };
         });
         if (pesanToInsert.length > 0) await db('pesans').insert(pesanToInsert);
-        console.log(`✅ Seeded ${pesanToInsert.length} pesans.`);
-
+        console.log(`✅ Seeded ${pesanToInsert.length} pesan.`);
 
         console.log('🎉 Seeding complete!');
         process.exit(0);

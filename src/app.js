@@ -11,6 +11,9 @@ const beritaRoutes = require('./routes/berita');
 const programKerjaRoutes = require('./routes/programKerja');
 const galeriRoutes = require('./routes/galeri');
 const pesanRoutes = require('./routes/pesan');
+const exportRoutes = require('./routes/export');
+const kegiatanRoutes = require('./routes/kegiatan');
+const merchandiseRoutes = require('./routes/merchandise');
 const { errorResponse } = require('./helpers/response');
 
 const app = express();
@@ -42,6 +45,8 @@ app.use('/api/anggota', anggotaRoutes);
 app.use('/api/berita', beritaRoutes);
 app.use('/api/program-kerja', programKerjaRoutes);
 app.use('/api/galeri', galeriRoutes);
+app.use('/api/kegiatan', kegiatanRoutes);
+app.use('/api/merchandise', merchandiseRoutes);
 app.use('/api/pesan', (req, res, next) => {
     // Apply rate limiter only to POST (public form submission)
     if (req.method === 'POST') {
@@ -50,8 +55,11 @@ app.use('/api/pesan', (req, res, next) => {
     next();
 }, pesanRoutes);
 
-// ─── Dashboard Statistics (Auth required) ───────────────────────────────────
+// ─── Export Data (Auth required) ────────────────────────────────────────────
 const authMiddleware = require('./middleware/auth');
+app.use('/api/export', authMiddleware, exportRoutes);
+
+// ─── Dashboard Statistics (Auth required) ───────────────────────────────────
 const db = require('./config/database');
 const { successResponse } = require('./helpers/response');
 

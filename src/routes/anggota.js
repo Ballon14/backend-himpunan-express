@@ -1,7 +1,7 @@
 const express = require('express');
 const { body } = require('express-validator');
 const { v4: uuidv4 } = require('uuid');
-const db = require('../config/database');
+const prisma = require('../config/prisma');
 const validate = require('../middleware/validate');
 const authMiddleware = require('../middleware/auth');
 const { createUploader, getStoragePath, getFileUrl, deleteFile } = require('../middleware/upload');
@@ -10,7 +10,6 @@ const { successResponse, errorResponse } = require('../helpers/response');
 const router = express.Router();
 const upload = createUploader('anggota');
 
-// ─── Format resource (mirrors AnggotaResource) ──────────────────────────────
 function formatAnggota(row, req) {
     return {
         id: row.id,
@@ -19,6 +18,10 @@ function formatAnggota(row, req) {
         jurusan: row.jurusan,
         angkatan: row.angkatan,
         jabatan: row.jabatan,
+        email: row.email,
+        instagram: row.instagram,
+        linkedin: row.linkedin,
+        motto: row.motto,
         foto: row.foto ? getFileUrl(req, row.foto) : null,
         status_aktif: Boolean(row.status_aktif),
         created_at: row.created_at ? new Date(row.created_at).toISOString() : null,
@@ -33,29 +36,33 @@ router.get('/', async (req, res) => {
         const limit = parseInt(per_page);
         const offset = (parseInt(page) - 1) * limit;
 
-        let query = db('anggotas').whereNull('deleted_at');
+        const where = { deleted_at: null };
 
         if (search) {
-            query = query.where(function () {
-                this.where('nama', 'like', `%${search}%`)
-                    .orWhere('nim', 'like', `%${search}%`)
-                    .orWhere('jurusan', 'like', `%${search}%`);
-            });
+            where.OR = [
+                { nama: { contains: search } },
+                { nim: { contains: search } },
+                { jurusan: { contains: search } }
+            ];
         }
 
         if (status_aktif !== undefined) {
-            query = query.where('status_aktif', status_aktif === 'true' || status_aktif === '1' ? 1 : 0);
+            where.status_aktif = status_aktif === 'true' || status_aktif === '1' ? true : false;
         }
 
         if (angkatan) {
-            query = query.where('angkatan', angkatan);
+            where.angkatan = angkatan;
         }
 
-        const totalQuery = query.clone().count('* as total').first();
-        const dataQuery = query.clone().orderBy('created_at', 'desc').limit(limit).offset(offset);
-
-        const [totalResult, rows] = await Promise.all([totalQuery, dataQuery]);
-        const total = totalResult.total;
+        const [total, rows] = await Promise.all([
+            prisma.anggotas.count({ where }),
+            prisma.anggotas.findMany({
+                where,
+                orderBy: { created_at: 'desc' },
+                take: limit,
+                skip: offset
+            })
+        ]);
 
         return successResponse(res, {
             data: rows.map((r) => formatAnggota(r, req)),
@@ -75,7 +82,9 @@ router.get('/', async (req, res) => {
 // GET /api/anggota/:id — Public
 router.get('/:id', async (req, res) => {
     try {
-        const row = await db('anggotas').where('id', req.params.id).whereNull('deleted_at').first();
+        const row = await prisma.anggotas.findFirst({
+            where: { id: req.params.id, deleted_at: null }
+        });
         if (!row) return errorResponse(res, 'Anggota tidak ditemukan.', 404);
         return successResponse(res, formatAnggota(row, req), 'Detail anggota berhasil diambil.');
     } catch (err) {
@@ -95,13 +104,19 @@ router.post(
         body('jurusan').notEmpty().withMessage('Jurusan wajib diisi.').isLength({ max: 255 }),
         body('angkatan').notEmpty().withMessage('Angkatan wajib diisi.').isLength({ max: 10 }),
         body('jabatan').optional({ values: 'falsy' }).isLength({ max: 255 }),
+        body('email').optional({ values: 'falsy' }).isEmail().withMessage('Format email salah.').isLength({ max: 255 }),
+        body('instagram').optional({ values: 'falsy' }).isLength({ max: 255 }),
+        body('linkedin').optional({ values: 'falsy' }).isLength({ max: 255 }),
+        body('motto').optional({ values: 'falsy' }).isLength({ max: 500 }),
         body('status_aktif').optional().isBoolean(),
     ],
     validate,
     async (req, res) => {
         try {
             // Check unique NIM
-            const existing = await db('anggotas').where('nim', req.body.nim).whereNull('deleted_at').first();
+            const existing = await prisma.anggotas.findFirst({
+                where: { nim: req.body.nim, deleted_at: null }
+            });
             if (existing) return errorResponse(res, 'Validasi gagal.', 422, { nim: 'NIM sudah digunakan.' });
 
             const id = uuidv4();
@@ -114,14 +129,17 @@ router.post(
                 jurusan: req.body.jurusan,
                 angkatan: req.body.angkatan,
                 jabatan: req.body.jabatan || null,
+                email: req.body.email || null,
+                instagram: req.body.instagram || null,
+                linkedin: req.body.linkedin || null,
+                motto: req.body.motto || null,
                 foto: req.file ? getStoragePath('anggota', req.file.filename) : null,
-                status_aktif: req.body.status_aktif !== undefined ? (req.body.status_aktif === 'true' || req.body.status_aktif === true ? 1 : 0) : 1,
+                status_aktif: req.body.status_aktif !== undefined ? (req.body.status_aktif === 'true' || req.body.status_aktif === true) : true,
                 created_at: now,
                 updated_at: now,
             };
 
-            await db('anggotas').insert(data);
-            const row = await db('anggotas').where('id', id).first();
+            const row = await prisma.anggotas.create({ data });
 
             return successResponse(res, formatAnggota(row, req), 'Anggota berhasil ditambahkan.', 201);
         } catch (err) {
@@ -142,17 +160,25 @@ router.put(
         body('jurusan').optional().isLength({ max: 255 }),
         body('angkatan').optional().isLength({ max: 10 }),
         body('jabatan').optional({ values: 'falsy' }).isLength({ max: 255 }),
+        body('email').optional({ values: 'falsy' }).isEmail().withMessage('Format email salah.').isLength({ max: 255 }),
+        body('instagram').optional({ values: 'falsy' }).isLength({ max: 255 }),
+        body('linkedin').optional({ values: 'falsy' }).isLength({ max: 255 }),
+        body('motto').optional({ values: 'falsy' }).isLength({ max: 500 }),
         body('status_aktif').optional().isBoolean(),
     ],
     validate,
     async (req, res) => {
         try {
-            const row = await db('anggotas').where('id', req.params.id).whereNull('deleted_at').first();
+            const row = await prisma.anggotas.findFirst({
+                where: { id: req.params.id, deleted_at: null }
+            });
             if (!row) return errorResponse(res, 'Anggota tidak ditemukan.', 404);
 
             // Check unique NIM if changed
             if (req.body.nim && req.body.nim !== row.nim) {
-                const existing = await db('anggotas').where('nim', req.body.nim).whereNull('deleted_at').whereNot('id', req.params.id).first();
+                const existing = await prisma.anggotas.findFirst({
+                    where: { nim: req.body.nim, deleted_at: null, NOT: { id: req.params.id } }
+                });
                 if (existing) return errorResponse(res, 'Validasi gagal.', 422, { nim: 'NIM sudah digunakan.' });
             }
 
@@ -162,15 +188,21 @@ router.put(
             if (req.body.jurusan !== undefined) updates.jurusan = req.body.jurusan;
             if (req.body.angkatan !== undefined) updates.angkatan = req.body.angkatan;
             if (req.body.jabatan !== undefined) updates.jabatan = req.body.jabatan || null;
-            if (req.body.status_aktif !== undefined) updates.status_aktif = req.body.status_aktif === 'true' || req.body.status_aktif === true ? 1 : 0;
+            if (req.body.email !== undefined) updates.email = req.body.email || null;
+            if (req.body.instagram !== undefined) updates.instagram = req.body.instagram || null;
+            if (req.body.linkedin !== undefined) updates.linkedin = req.body.linkedin || null;
+            if (req.body.motto !== undefined) updates.motto = req.body.motto || null;
+            if (req.body.status_aktif !== undefined) updates.status_aktif = req.body.status_aktif === 'true' || req.body.status_aktif === true;
 
             if (req.file) {
                 if (row.foto) deleteFile(row.foto);
                 updates.foto = getStoragePath('anggota', req.file.filename);
             }
 
-            await db('anggotas').where('id', req.params.id).update(updates);
-            const updated = await db('anggotas').where('id', req.params.id).first();
+            const updated = await prisma.anggotas.update({
+                where: { id: req.params.id },
+                data: updates
+            });
 
             return successResponse(res, formatAnggota(updated, req), 'Anggota berhasil diperbarui.');
         } catch (err) {
@@ -183,10 +215,16 @@ router.put(
 // DELETE /api/anggota/:id — Auth required (soft delete)
 router.delete('/:id', authMiddleware, async (req, res) => {
     try {
-        const row = await db('anggotas').where('id', req.params.id).whereNull('deleted_at').first();
+        const row = await prisma.anggotas.findFirst({
+            where: { id: req.params.id, deleted_at: null }
+        });
         if (!row) return errorResponse(res, 'Anggota tidak ditemukan.', 404);
 
-        await db('anggotas').where('id', req.params.id).update({ deleted_at: new Date() });
+        await prisma.anggotas.update({
+            where: { id: req.params.id },
+            data: { deleted_at: new Date() }
+        });
+
         return successResponse(res, null, 'Anggota berhasil dihapus.');
     } catch (err) {
         console.error('Anggota destroy error:', err);
