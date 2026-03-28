@@ -8,6 +8,8 @@ require('dotenv').config();
 
 const bcrypt = require('bcryptjs');
 const { v4: uuidv4 } = require('uuid');
+const db = require('./config/database');
+const { faker } = require('@faker-js/faker');
 
 async function seed() {
     try {
@@ -47,15 +49,14 @@ async function seed() {
 
         // 2. Anggotas
         const anggotaOptions = ['Ketua', 'Wakil Ketua', 'Sekretaris', 'Bendahara', 'Koordinator Divisi', 'Anggota', null];
-        const jurusanOptions = ['Teknik Informatika', 'Sistem Informasi', 'Teknik Elektro', 'Teknik Mesin', 'Teknik Sipil', 'Manajemen', 'Akuntansi'];
 
         const anggotasToInsert = Array.from({ length: 20 }).map(() => ({
             id: uuidv4(),
             nama: faker.person.fullName(),
             nim: faker.string.numeric(10),
-            jurusan: faker.helpers.arrayElement(jurusanOptions),
             angkatan: faker.number.int({ min: 2020, max: 2025 }).toString(),
             jabatan: faker.helpers.arrayElement(anggotaOptions),
+            motto: faker.helpers.arrayElement(['Kokoh Tak Tertandingi', 'Membangun Negeri', 'Struktur Kuat, Desain Akurat', 'Inovasi Tiada Henti', 'Pantang Pulang Sebelum Cor Kering', null]),
             status_aktif: faker.datatype.boolean(0.85),
             foto: null,
             created_at: new Date(),
@@ -65,8 +66,20 @@ async function seed() {
         console.log(`✅ Seeded ${anggotasToInsert.length} anggotas.`);
 
         // 3. Berita
+        const judulBeritaOptions = [
+            'Tim HMTKBG Juara Nasional Lomba Rancang Bangun Gedung Tahan Gempa',
+            'Seminar Nasional Inovasi Beton Ramah Lingkungan untuk Konstruksi Modern',
+            'Kunjungan Proyek: Mahasiswa TKBG Tinjau Pembangunan Gedung Pencakar Langit',
+            'Pelatihan AutoCAD dan Revit Tingkat Lanjut Sukses Digelar',
+            'Mahasiswa TKBG Ciptakan Desain Jembatan Inovatif pada Kompetisi Konstruksi',
+            'Workshop Pengukuran Tanah dan Topografi bersama Praktisi',
+            'Sosialisasi K3 Keselamatan Kerja Konstruksi di Lingkungan Kampus',
+            'Pengenalan Aplikasi SAP2000 untuk Analisis Struktur Bangunan',
+            'Webinar Masa Depan Teknologi Baja Ringan di Indonesia',
+            'Bakti Sosial HMTKBG: Bangun Fasilitas MCK untuk Desa Binaan'
+        ];
         const beritasToInsert = Array.from({ length: 10 }).map(() => {
-            const judul = faker.lorem.sentence(6);
+            const judul = faker.helpers.arrayElement(judulBeritaOptions);
             const status = faker.helpers.arrayElement(['draft', 'published']);
             const slug = judul.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '') + '-' + faker.string.alphanumeric(5).toLowerCase();
             return {
@@ -85,7 +98,15 @@ async function seed() {
         console.log(`✅ Seeded ${beritasToInsert.length} beritas.`);
 
         // 4. Program Kerja
-        const prokerOptions = ['Webinar Teknologi', 'Workshop UI/UX Design', 'Bakti Sosial', 'Musyawarah Besar', 'Pelatihan Leadership', 'Seminar Nasional', 'Lomba Coding', 'Study Tour', 'Pengabdian Masyarakat'];
+        const prokerOptions = [
+            'Pelatihan Software AutoCAD & Revit',
+            'Lomba Desain Rancang Bangun Gedung',
+            'Sertifikasi K3 Konstruksi Tingkat Dasar',
+            'Kunjungan Industri Proyek Konstruksi Nasional',
+            'Seminar Manajemen Konstruksi & Estimasi Biaya',
+            'Workshop Pengujian Material Kuat Tekan Beton',
+            'Pengabdian Masyarakat: Renovasi Bangunan Desa'
+        ];
         const prokerToInsert = Array.from({ length: 8 }).map(() => {
             const startDate = faker.date.soon({ days: 90 });
             const endDate = new Date(startDate.getTime() + faker.number.int({ min: 1, max: 30 }) * 24 * 60 * 60 * 1000);
@@ -105,7 +126,7 @@ async function seed() {
         console.log(`✅ Seeded ${prokerToInsert.length} program_kerjas.`);
 
         // 5. Galeri
-        const kategoriOptions = ['Kegiatan', 'Seminar', 'Workshop', 'Lomba', 'Sosial', 'Gathering'];
+        const kategoriOptions = ['Proyek Lapangan', 'Seminar Konstruksi', 'Lomba Desain', 'Uji Material', 'Sosial', 'Gathering'];
         const galeriToInsert = Array.from({ length: 15 }).map(() => ({
             id: uuidv4(),
             judul: faker.lorem.sentence(4),

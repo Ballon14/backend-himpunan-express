@@ -11,7 +11,7 @@ model anggotas {
   id           String    @id @db.Char(36)
   nama         String    @db.VarChar(255)
   nim          String    @unique(map: "anggotas_nim_unique") @db.VarChar(255)
-  jurusan      String    @db.VarChar(255)
+
   angkatan     String    @db.VarChar(255)
   jabatan      String?   @db.VarChar(255)
   email        String?   @db.VarChar(255)

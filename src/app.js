@@ -75,12 +75,12 @@ app.get('/api/dashboard/stats', authMiddleware, async (req, res) => {
         ]);
 
         return successResponse(res, {
-            anggota: anggota.count,
-            berita: berita.count,
-            program_kerja: programKerja.count,
-            galeri: galeri.count,
-            pesan_unread: pesanUnread.count,
-            pesan_total: pesanTotal.count,
+            anggota: Number(anggota.count),
+            berita: Number(berita.count),
+            program_kerja: Number(programKerja.count),
+            galeri: Number(galeri.count),
+            pesan_unread: Number(pesanUnread.count),
+            pesan_total: Number(pesanTotal.count),
         }, 'Dashboard stats berhasil diambil.');
     } catch (err) {
         console.error('Dashboard stats error:', err);
@@ -128,19 +128,19 @@ app.get('/api/dashboard/charts', authMiddleware, async (req, res) => {
             color: statusColors[r.status] || '#6366f1',
         }));
 
-        // 3. Anggota distribution by jurusan
-        const anggotaJurusan = await db('anggotas')
+        // 3. Anggota distribution by angkatan
+        const anggotaAngkatan = await db('anggotas')
             .whereNull('deleted_at')
-            .select('jurusan', db.raw('COUNT(*) as count'))
-            .groupBy('jurusan')
-            .orderBy('count', 'desc')
+            .select('angkatan', db.raw('COUNT(*) as count'))
+            .groupBy('angkatan')
+            .orderBy('angkatan', 'desc')
             .limit(8);
 
-        const jurusanColors = ['#6366f1', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6', '#3b82f6', '#14b8a6', '#f97316'];
-        const anggotaBar = anggotaJurusan.map((r, i) => ({
-            jurusan: r.jurusan.length > 15 ? r.jurusan.substring(0, 15) + '...' : r.jurusan,
+        const angkatanColors = ['#6366f1', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6', '#3b82f6', '#14b8a6', '#f97316'];
+        const anggotaBar = anggotaAngkatan.map((r, i) => ({
+            angkatan: r.angkatan,
             jumlah: r.count,
-            color: jurusanColors[i % jurusanColors.length],
+            color: angkatanColors[i % angkatanColors.length],
         }));
 
         // 4. Pesan monthly trend
@@ -159,7 +159,7 @@ app.get('/api/dashboard/charts', authMiddleware, async (req, res) => {
         return successResponse(res, {
             content_trend: contentTrend,
             proker_status: prokerPie,
-            anggota_jurusan: anggotaBar,
+            anggota_angkatan: anggotaBar,
             pesan_trend: pesanTrend,
         }, 'Dashboard charts berhasil diambil.');
     } catch (err) {

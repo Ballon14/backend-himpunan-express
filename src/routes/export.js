@@ -12,7 +12,7 @@ const EXPORTABLE_TABLES = {
         columns: [
             { header: 'Nama', key: 'nama', width: 25 },
             { header: 'NIM', key: 'nim', width: 15 },
-            { header: 'Jurusan', key: 'jurusan', width: 25 },
+
             { header: 'Angkatan', key: 'angkatan', width: 12 },
             { header: 'Jabatan', key: 'jabatan', width: 20 },
             { header: 'Email', key: 'email', width: 25 },

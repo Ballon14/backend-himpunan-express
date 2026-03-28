@@ -27,12 +27,25 @@ function formatKegiatan(row) {
 // GET /api/kegiatan — Public, with optional month/year filter
 router.get('/', async (req, res) => {
     try {
-        const { bulan, tahun, kategori, per_page = 50, page = 1 } = req.query;
+        const { search, bulan, tahun, kategori, per_page = 50, page = 1 } = req.query;
         const limit = parseInt(per_page);
         const offset = (parseInt(page) - 1) * limit;
 
         let query = db('kegiatan').whereNull('deleted_at');
         let countQuery = db('kegiatan').whereNull('deleted_at');
+
+        if (search) {
+            query = query.where(function () {
+                this.where('judul', 'like', `%${search}%`)
+                    .orWhere('deskripsi', 'like', `%${search}%`)
+                    .orWhere('lokasi', 'like', `%${search}%`);
+            });
+            countQuery = countQuery.where(function () {
+                this.where('judul', 'like', `%${search}%`)
+                    .orWhere('deskripsi', 'like', `%${search}%`)
+                    .orWhere('lokasi', 'like', `%${search}%`);
+            });
+        }
 
         if (bulan && tahun) {
             query = query.whereRaw('MONTH(tanggal_mulai) = ? AND YEAR(tanggal_mulai) = ?', [bulan, tahun]);
