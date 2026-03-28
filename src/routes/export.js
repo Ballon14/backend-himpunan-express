@@ -192,7 +192,7 @@ async function getJsonData(tableName, config) {
 router.get('/:table', async (req, res) => {
     try {
         const { table } = req.params;
-        const format = (req.query.format || 'xlsx').toLowerCase();
+        const format = (req.query.format || 'csv').toLowerCase();
 
         const config = EXPORTABLE_TABLES[table];
         if (!config) {
@@ -209,12 +209,16 @@ router.get('/:table', async (req, res) => {
             return res.json({ table: config.label, exported_at: new Date().toISOString(), total: data.length, data });
         }
 
-        // Default: xlsx
-        const { workbook, rowCount } = await buildWorkbook(table, config);
-        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-        res.setHeader('Content-Disposition', `attachment; filename="${filename}.xlsx"`);
-        await workbook.xlsx.write(res);
-        res.end();
+        // Format CSV
+        if (format === 'csv') {
+            const { workbook } = await buildWorkbook(table, config);
+            res.setHeader('Content-Type', 'text/csv');
+            res.setHeader('Content-Disposition', `attachment; filename="${filename}.csv"`);
+            await workbook.csv.write(res);
+            return res.end();
+        }
+
+        return errorResponse(res, 'Format tidak didukung', 400);
     } catch (err) {
         console.error('Export error:', err);
         return errorResponse(res, 'Gagal melakukan export data.', 500);
@@ -224,7 +228,7 @@ router.get('/:table', async (req, res) => {
 // ─── Export ALL tables as ZIP ────────────────────────────────────────────────
 router.get('/', async (req, res) => {
     try {
-        const format = (req.query.format || 'xlsx').toLowerCase();
+        const format = (req.query.format || 'csv').toLowerCase();
         const timestamp = new Date().toISOString().slice(0, 10);
         const zipFilename = `Backup_HMTKBG_${timestamp}.zip`;
 
@@ -245,10 +249,10 @@ router.get('/', async (req, res) => {
                     2
                 );
                 archive.append(jsonContent, { name: `${filename}.json` });
-            } else {
+            } else if (format === 'csv') {
                 const { workbook } = await buildWorkbook(tableName, config);
-                const buffer = await workbook.xlsx.writeBuffer();
-                archive.append(buffer, { name: `${filename}.xlsx` });
+                const buffer = await workbook.csv.writeBuffer();
+                archive.append(buffer, { name: `${filename}.csv` });
             }
         }
 
