@@ -221,7 +221,7 @@ model merchandise {
   nama         String                @db.VarChar(255)
   deskripsi    String?               @db.Text
   harga        Int                   @default(0)
-  foto         String?               @db.VarChar(255)
+  foto         String?               @db.LongText
   kategori     merchandise_kategori  @default(lainnya)
   is_available Boolean               @default(true)
   created_at   DateTime?             @db.Timestamp(0)

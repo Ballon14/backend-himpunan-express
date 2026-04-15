@@ -13,12 +13,27 @@ const upload = createUploader('merchandise');
 const KATEGORI_LIST = ['kaos', 'jaket', 'topi', 'aksesori', 'lainnya'];
 
 function formatMerchandise(row, req) {
+    let fotoUrls = [];
+    if (row.foto) {
+        try {
+            const parsed = JSON.parse(row.foto);
+            if (Array.isArray(parsed)) {
+                fotoUrls = parsed.map(p => getFileUrl(req, p));
+            } else {
+                fotoUrls = [getFileUrl(req, parsed)];
+            }
+        } catch {
+            // Legacy single string path
+            fotoUrls = [getFileUrl(req, row.foto)];
+        }
+    }
+
     return {
         id: row.id,
         nama: row.nama,
         deskripsi: row.deskripsi,
         harga: row.harga,
-        foto: row.foto ? getFileUrl(req, row.foto) : null,
+        foto: fotoUrls, // now an array of URLs
         kategori: row.kategori,
         is_available: Boolean(row.is_available),
         created_at: row.created_at ? new Date(row.created_at).toISOString() : null,
@@ -84,7 +99,7 @@ router.get('/:id', async (req, res) => {
 router.post(
     '/',
     authMiddleware,
-    upload.single('foto'),
+    upload.array('foto', 10),
     [
         body('nama').notEmpty().withMessage('Nama wajib diisi.').isLength({ max: 255 }),
         body('deskripsi').optional({ values: 'falsy' }),
@@ -97,12 +112,19 @@ router.post(
         try {
             const id = uuidv4();
             const now = new Date();
+
+            let fotoPath = null;
+            if (req.files && req.files.length > 0) {
+                const paths = req.files.map(file => getStoragePath('merchandise', file.filename));
+                fotoPath = JSON.stringify(paths);
+            }
+
             const data = {
                 id,
                 nama: req.body.nama,
                 deskripsi: req.body.deskripsi || null,
                 harga: parseInt(req.body.harga),
-                foto: req.file ? getStoragePath('merchandise', req.file.filename) : null,
+                foto: fotoPath,
                 kategori: req.body.kategori || 'lainnya',
                 is_available: req.body.is_available !== undefined ? (req.body.is_available === 'true' || req.body.is_available === true) : true,
                 created_at: now,
@@ -122,7 +144,7 @@ router.post(
 router.put(
     '/:id',
     authMiddleware,
-    upload.single('foto'),
+    upload.array('foto', 10),
     [
         body('nama').optional().isLength({ max: 255 }),
         body('deskripsi').optional({ values: 'falsy' }),
@@ -143,9 +165,20 @@ router.put(
             if (req.body.kategori !== undefined) updates.kategori = req.body.kategori;
             if (req.body.is_available !== undefined) updates.is_available = req.body.is_available === 'true' || req.body.is_available === true;
 
-            if (req.file) {
-                if (row.foto) deleteFile(row.foto);
-                updates.foto = getStoragePath('merchandise', req.file.filename);
+            if (req.files && req.files.length > 0) {
+                // Delete old files
+                if (row.foto) {
+                    try {
+                        const parsed = JSON.parse(row.foto);
+                        if (Array.isArray(parsed)) {
+                            parsed.forEach(p => deleteFile(p));
+                        } else deleteFile(parsed);
+                    } catch {
+                        deleteFile(row.foto);
+                    }
+                }
+                const paths = req.files.map(file => getStoragePath('merchandise', file.filename));
+                updates.foto = JSON.stringify(paths);
             }
 
             await db('merchandise').where({ id: req.params.id }).update(updates);
