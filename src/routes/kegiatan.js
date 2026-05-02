@@ -4,7 +4,7 @@ const { v4: uuidv4 } = require('uuid');
 const db = require('../config/database');
 const validate = require('../middleware/validate');
 const authMiddleware = require('../middleware/auth');
-const { successResponse, errorResponse } = require('../helpers/response');
+const { successResponse, errorResponse, parsePagination } = require('../helpers/response');
 
 const router = express.Router();
 
@@ -27,9 +27,8 @@ function formatKegiatan(row) {
 // GET /api/kegiatan — Public, with optional month/year filter
 router.get('/', async (req, res) => {
     try {
-        const { search, bulan, tahun, kategori, per_page = 50, page = 1 } = req.query;
-        const limit = parseInt(per_page);
-        const offset = (parseInt(page) - 1) * limit;
+        const { search, bulan, tahun, kategori } = req.query;
+        const { page, limit, offset } = parsePagination(req.query, 50);
 
         let query = db('kegiatan').whereNull('deleted_at');
         let countQuery = db('kegiatan').whereNull('deleted_at');

@@ -31,9 +31,12 @@ function createUploader(subDir) {
     });
 
     const fileFilter = (req, file, cb) => {
-        const allowed = ['.jpeg', '.jpg', '.png', '.webp'];
+        const allowedExts = ['.jpeg', '.jpg', '.png', '.webp'];
+        const allowedMimes = ['image/jpeg', 'image/png', 'image/webp'];
         const ext = path.extname(file.originalname).toLowerCase();
-        if (allowed.includes(ext)) {
+        const mime = file.mimetype;
+
+        if (allowedExts.includes(ext) && allowedMimes.includes(mime)) {
             cb(null, true);
         } else {
             cb(new Error('Hanya file gambar (jpeg, jpg, png, webp) yang diperbolehkan.'), false);

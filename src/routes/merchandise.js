@@ -5,7 +5,7 @@ const db = require('../config/database');
 const validate = require('../middleware/validate');
 const authMiddleware = require('../middleware/auth');
 const { createUploader, getStoragePath, getFileUrl, deleteFile } = require('../middleware/upload');
-const { successResponse, errorResponse } = require('../helpers/response');
+const { successResponse, errorResponse, parsePagination } = require('../helpers/response');
 
 const router = express.Router();
 const upload = createUploader('merchandise');
@@ -44,9 +44,8 @@ function formatMerchandise(row, req) {
 // GET /api/merchandise — Public
 router.get('/', async (req, res) => {
     try {
-        const { kategori, search, per_page = 20, page = 1 } = req.query;
-        const limit = parseInt(per_page);
-        const offset = (parseInt(page) - 1) * limit;
+        const { kategori, search } = req.query;
+        const { page, limit, offset } = parsePagination(req.query, 20);
 
         let query = db('merchandise').whereNull('deleted_at');
         let countQuery = db('merchandise').whereNull('deleted_at');

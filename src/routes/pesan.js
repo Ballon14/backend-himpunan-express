@@ -3,7 +3,7 @@ const { body } = require('express-validator');
 const db = require('../config/database');
 const validate = require('../middleware/validate');
 const authMiddleware = require('../middleware/auth');
-const { successResponse, errorResponse } = require('../helpers/response');
+const { successResponse, errorResponse, parsePagination } = require('../helpers/response');
 
 const router = express.Router();
 
@@ -55,9 +55,8 @@ router.post(
 // GET /api/pesan — Auth required (admin: list all)
 router.get('/', authMiddleware, async (req, res) => {
     try {
-        const { search, is_read, per_page = 15, page = 1 } = req.query;
-        const limit = parseInt(per_page);
-        const offset = (parseInt(page) - 1) * limit;
+        const { search, is_read } = req.query;
+        const { page, limit, offset } = parsePagination(req.query);
 
         let query = db('pesans').whereNull('deleted_at');
 

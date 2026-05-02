@@ -6,7 +6,7 @@ const db = require('../config/database');
 const validate = require('../middleware/validate');
 const authMiddleware = require('../middleware/auth');
 const { createUploader, getStoragePath, getFileUrl, deleteFile } = require('../middleware/upload');
-const { successResponse, errorResponse } = require('../helpers/response');
+const { successResponse, errorResponse, parsePagination } = require('../helpers/response');
 
 const router = express.Router();
 const upload = createUploader('berita/thumbnails');
@@ -33,9 +33,8 @@ function formatBerita(row, req) {
 // GET /api/berita — Public (published only)
 router.get('/', async (req, res) => {
     try {
-        const { search, status, per_page = 15, page = 1 } = req.query;
-        const limit = parseInt(per_page);
-        const offset = (parseInt(page) - 1) * limit;
+        const { search } = req.query;
+        const { page, limit, offset } = parsePagination(req.query);
 
         let query = db('beritas').whereNull('deleted_at').where('status', 'published');
 
@@ -70,9 +69,8 @@ router.get('/', async (req, res) => {
 // GET /api/berita/all — Auth required (all statuses for admin)
 router.get('/all', authMiddleware, async (req, res) => {
     try {
-        const { search, status, per_page = 15, page = 1 } = req.query;
-        const limit = parseInt(per_page);
-        const offset = (parseInt(page) - 1) * limit;
+        const { search, status } = req.query;
+        const { page, limit, offset } = parsePagination(req.query);
 
         let query = db('beritas').whereNull('deleted_at');
 
