@@ -1,3 +1,9 @@
+// ──────────────────────────────────────────────────────────────────────────────
+// SCHEMA REFERENCE — For documentation only. This project uses Knex (not Prisma).
+// This file documents the active MySQL tables used by the Express backend.
+// Legacy Laravel tables (cache, failed_jobs, jobs, sessions, etc.) have been removed.
+// ──────────────────────────────────────────────────────────────────────────────
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -45,32 +51,6 @@ model beritas {
   @@index([status], map: "beritas_status_index")
 }
 
-model cache {
-  key        String @id @db.VarChar(255)
-  value      String @db.MediumText
-  expiration Int
-
-  @@index([expiration], map: "cache_expiration_index")
-}
-
-model cache_locks {
-  key        String @id @db.VarChar(255)
-  owner      String @db.VarChar(255)
-  expiration Int
-
-  @@index([expiration], map: "cache_locks_expiration_index")
-}
-
-model failed_jobs {
-  id         BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
-  uuid       String   @unique(map: "failed_jobs_uuid_unique") @db.VarChar(255)
-  connection String   @db.Text
-  queue      String   @db.Text
-  payload    String   @db.LongText
-  exception  String   @db.LongText
-  failed_at  DateTime @default(now()) @db.Timestamp(0)
-}
-
 model galeris {
   id         String    @id @db.Char(36)
   judul      String    @db.VarChar(255)
@@ -83,59 +63,6 @@ model galeris {
 
   @@index([kategori], map: "galeris_kategori_index")
   @@index([tanggal], map: "galeris_tanggal_index")
-}
-
-model job_batches {
-  id             String  @id @db.VarChar(255)
-  name           String  @db.VarChar(255)
-  total_jobs     Int
-  pending_jobs   Int
-  failed_jobs    Int
-  failed_job_ids String  @db.LongText
-  options        String? @db.MediumText
-  cancelled_at   Int?
-  created_at     Int
-  finished_at    Int?
-}
-
-model jobs {
-  id           BigInt @id @default(autoincrement()) @db.UnsignedBigInt
-  queue        String @db.VarChar(255)
-  payload      String @db.LongText
-  attempts     Int    @db.UnsignedTinyInt
-  reserved_at  Int?   @db.UnsignedInt
-  available_at Int    @db.UnsignedInt
-  created_at   Int    @db.UnsignedInt
-
-  @@index([queue], map: "jobs_queue_index")
-}
-
-model migrations {
-  id        Int    @id @default(autoincrement()) @db.UnsignedInt
-  migration String @db.VarChar(255)
-  batch     Int
-}
-
-model password_reset_tokens {
-  email      String    @id @db.VarChar(255)
-  token      String    @db.VarChar(255)
-  created_at DateTime? @db.Timestamp(0)
-}
-
-model personal_access_tokens {
-  id             BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
-  tokenable_type String    @db.VarChar(255)
-  tokenable_id   String    @db.Char(36)
-  name           String    @db.Text
-  token          String    @unique(map: "personal_access_tokens_token_unique") @db.VarChar(64)
-  abilities      String?   @db.Text
-  last_used_at   DateTime? @db.Timestamp(0)
-  expires_at     DateTime? @db.Timestamp(0)
-  created_at     DateTime? @db.Timestamp(0)
-  updated_at     DateTime? @db.Timestamp(0)
-
-  @@index([expires_at], map: "personal_access_tokens_expires_at_index")
-  @@index([tokenable_type, tokenable_id], map: "personal_access_tokens_tokenable_type_tokenable_id_index")
 }
 
 model pesans {
@@ -165,18 +92,6 @@ model program_kerjas {
   @@index([status], map: "program_kerjas_status_index")
 }
 
-model sessions {
-  id            String  @id @db.VarChar(255)
-  user_id       String? @db.Char(36)
-  ip_address    String? @db.VarChar(45)
-  user_agent    String? @db.Text
-  payload       String  @db.LongText
-  last_activity Int
-
-  @@index([last_activity], map: "sessions_last_activity_index")
-  @@index([user_id], map: "sessions_user_id_index")
-}
-
 model users {
   id                String    @id @db.Char(36)
   name              String    @db.VarChar(255)
@@ -186,18 +101,6 @@ model users {
   remember_token    String?   @db.VarChar(100)
   created_at        DateTime? @db.Timestamp(0)
   updated_at        DateTime? @db.Timestamp(0)
-}
-
-enum beritas_status {
-  draft
-  published
-}
-
-enum program_kerjas_status {
-  perencanaan
-  berjalan
-  selesai
-  dibatalkan
 }
 
 model kegiatan {
@@ -230,6 +133,20 @@ model merchandise {
 
   @@index([kategori], map: "merchandise_kategori_index")
   @@index([is_available], map: "merchandise_is_available_index")
+}
+
+// ─── Enums ──────────────────────────────────────────────────────────────────
+
+enum beritas_status {
+  draft
+  published
+}
+
+enum program_kerjas_status {
+  perencanaan
+  berjalan
+  selesai
+  dibatalkan
 }
 
 enum kegiatan_kategori {

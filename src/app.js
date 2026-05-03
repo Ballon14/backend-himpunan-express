@@ -72,16 +72,31 @@ const loginLimiter = rateLimit({
 });
 
 // ─── Health Check ───────────────────────────────────────────────────────────
-app.get('/api/health', (req, res) => {
-    return res.json({
-        success: true,
-        message: 'Server is healthy',
-        data: {
-            uptime: process.uptime(),
-            timestamp: new Date().toISOString(),
-            environment: process.env.NODE_ENV || 'development',
-        },
-    });
+app.get('/api/health', async (req, res) => {
+    try {
+        await db.raw('SELECT 1');
+        return res.json({
+            success: true,
+            message: 'Server is healthy',
+            data: {
+                uptime: process.uptime(),
+                timestamp: new Date().toISOString(),
+                environment: process.env.NODE_ENV || 'development',
+                database: 'connected',
+            },
+        });
+    } catch (err) {
+        console.error('Health check DB error:', err.message);
+        return res.status(503).json({
+            success: false,
+            message: 'Server is running but database is unreachable',
+            data: {
+                uptime: process.uptime(),
+                timestamp: new Date().toISOString(),
+                database: 'disconnected',
+            },
+        });
+    }
 });
 
 // ─── API Routes ─────────────────────────────────────────────────────────────
