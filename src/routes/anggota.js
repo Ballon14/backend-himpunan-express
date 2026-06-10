@@ -31,7 +31,7 @@ function formatAnggota(row, req) {
 // GET /api/anggota — Public, paginated
 router.get('/', async (req, res) => {
     try {
-        const { search, status_aktif, angkatan } = req.query;
+        const { search, status_aktif, angkatan, has_jabatan } = req.query;
         const { page, limit, offset } = parsePagination(req.query);
 
         let query = db('anggotas').whereNull('deleted_at');
@@ -49,6 +49,16 @@ router.get('/', async (req, res) => {
 
         if (angkatan) {
             query = query.where('angkatan', angkatan);
+        }
+
+        if (has_jabatan !== undefined) {
+            if (has_jabatan === 'true' || has_jabatan === '1') {
+                query = query.whereNotNull('jabatan').where('jabatan', '<>', '');
+            } else {
+                query = query.where(function () {
+                    this.whereNull('jabatan').orWhere('jabatan', '');
+                });
+            }
         }
 
         const totalQuery = query.clone().count('* as total').first();

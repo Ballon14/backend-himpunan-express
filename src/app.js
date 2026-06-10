@@ -17,6 +17,9 @@ const exportRoutes = require('./routes/export');
 const kegiatanRoutes = require('./routes/kegiatan');
 const merchandiseRoutes = require('./routes/merchandise');
 const dashboardRoutes = require('./routes/dashboard');
+const strukturRoutes = require('./routes/struktur');
+const logsRoutes = require('./routes/logs');
+const logger = require('./helpers/logger');
 const authMiddleware = require('./middleware/auth');
 const { errorResponse } = require('./helpers/response');
 const db = require('./config/database');
@@ -112,6 +115,8 @@ app.use('/api/program-kerja', programKerjaRoutes);
 app.use('/api/galeri', galeriRoutes);
 app.use('/api/kegiatan', kegiatanRoutes);
 app.use('/api/merchandise', merchandiseRoutes);
+app.use('/api/struktur', strukturRoutes);
+app.use('/api/logs', logsRoutes);
 
 // Pesan — POST (public) has rate limiter, GET/DELETE (admin) does not
 app.use('/api/pesan', (req, res, next) => {
@@ -132,7 +137,12 @@ app.use((req, res) => {
 
 // ─── Error Handler ──────────────────────────────────────────────────────────
 app.use((err, req, res, next) => {
-    console.error('Unhandled error:', err);
+    logger.error(`Unhandled error on ${req.method} ${req.originalUrl || req.url}`, {
+        message: err.message,
+        stack: err.stack,
+        ip: req.ip,
+        userAgent: req.get('User-Agent')
+    });
 
     // Multer errors
     if (err.code === 'LIMIT_FILE_SIZE') {
@@ -147,7 +157,7 @@ app.use((err, req, res, next) => {
 
 // ─── Start Server ───────────────────────────────────────────────────────────
 const server = app.listen(PORT, () => {
-    console.log(`🚀 Express server running on http://localhost:${PORT}`);
+    logger.info(`🚀 Express server running on http://localhost:${PORT}`);
 });
 
 // ─── Graceful Shutdown ──────────────────────────────────────────────────────
