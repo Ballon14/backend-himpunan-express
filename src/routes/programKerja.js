@@ -6,6 +6,7 @@ const validate = require('../middleware/validate');
 const authMiddleware = require('../middleware/auth');
 const { createUploader, getStoragePath, getFileUrl, deleteFile } = require('../middleware/upload');
 const { successResponse, errorResponse, parsePagination } = require('../helpers/response');
+const logger = require('../helpers/logger');
 
 const router = express.Router();
 const upload = createUploader('program-kerja');
@@ -110,6 +111,7 @@ router.post(
             await db('program_kerjas').insert(data);
             const row = await db('program_kerjas').where('id', id).first();
 
+            logger.audit('membuat', 'program kerja', req, { resourceId: id, changes: req.body });
             return successResponse(res, formatProgramKerja(row, req), 'Program kerja berhasil ditambahkan.', 201);
         } catch (err) {
             console.error('ProgramKerja store error:', err);
@@ -151,6 +153,7 @@ router.put(
             await db('program_kerjas').where('id', req.params.id).update(updates);
             const updated = await db('program_kerjas').where('id', req.params.id).first();
 
+            logger.audit('memperbarui', 'program kerja', req, { resourceId: req.params.id });
             return successResponse(res, formatProgramKerja(updated, req), 'Program kerja berhasil diperbarui.');
         } catch (err) {
             console.error('ProgramKerja update error:', err);
@@ -166,6 +169,8 @@ router.delete('/:id', authMiddleware, async (req, res) => {
         if (!row) return errorResponse(res, 'Program kerja tidak ditemukan.', 404);
 
         await db('program_kerjas').where('id', req.params.id).update({ deleted_at: new Date() });
+
+        logger.audit('menghapus', 'program kerja', req, { resourceId: req.params.id });
         return successResponse(res, null, 'Program kerja berhasil dihapus.');
     } catch (err) {
         console.error('ProgramKerja destroy error:', err);

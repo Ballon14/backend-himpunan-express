@@ -6,6 +6,7 @@ const db = require('../config/database');
 const validate = require('../middleware/validate');
 const authMiddleware = require('../middleware/auth');
 const { successResponse, errorResponse } = require('../helpers/response');
+const logger = require('../helpers/logger');
 
 const router = express.Router();
 
@@ -23,11 +24,13 @@ router.post(
 
             const user = await db('users').where('email', email).first();
             if (!user) {
+                logger.audit('login gagal', 'auth', req, { actor: email, changes: { email, reason: 'Email tidak ditemukan' } });
                 return errorResponse(res, 'Email atau password salah.', 401);
             }
 
             const isMatch = await bcrypt.compare(password, user.password.replace(/^\$2y\$/, '$2a$'));
             if (!isMatch) {
+                logger.audit('login gagal', 'auth', req, { actor: email, changes: { email, reason: 'Password salah' } });
                 return errorResponse(res, 'Email atau password salah.', 401);
             }
 
@@ -37,6 +40,7 @@ router.post(
                 { expiresIn: '24h' }
             );
 
+            logger.audit('login berhasil', 'auth', req, { actor: user.name, changes: { email: user.email } });
             return successResponse(res, {
                 user: {
                     id: user.id,
@@ -54,6 +58,7 @@ router.post(
 
 // POST /api/logout (JWT is stateless, just acknowledge)
 router.post('/logout', authMiddleware, (req, res) => {
+    logger.audit('logout', 'auth', req);
     return successResponse(res, null, 'Logout berhasil.');
 });
 

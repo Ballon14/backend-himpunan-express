@@ -6,54 +6,62 @@ const { successResponse, errorResponse } = require('../helpers/response');
 
 const router = express.Router();
 
-// GET /api/logs — Get recent log lines (Auth required)
+// GET /api/logs — Get structured audit trail (primary endpoint)
 router.get('/', authMiddleware, (req, res) => {
+    try {
+        const limit = parseInt(req.query.limit) || 200;
+        const logs = logger.readAuditLogs(limit);
+        return successResponse(res, logs, 'Audit trail berhasil diambil.');
+    } catch (err) {
+        console.error('Fetch audit logs error:', err);
+        return errorResponse(res, 'Gagal mengambil audit trail.', 500);
+    }
+});
+
+// GET /api/logs/system — Get raw system log lines (for terminal view)
+router.get('/system', authMiddleware, (req, res) => {
     try {
         const filePath = logger.getLogFile();
         if (!fs.existsSync(filePath)) {
-            return successResponse(res, [], 'Belum ada log yang dicatat.');
+            return successResponse(res, [], 'Belum ada log sistem.');
         }
 
         const limit = parseInt(req.query.limit) || 100;
         const data = fs.readFileSync(filePath, 'utf8');
-        const lines = data.trim().split('\n');
-        
-        // Filter out empty lines
-        const cleanLines = lines.filter(line => line.trim() !== '');
-        
-        // Return the last N lines in reverse chronological order
-        const recentLines = cleanLines.slice(-limit).reverse();
-        return successResponse(res, recentLines, 'Log berhasil diambil.');
+        const lines = data.trim().split('\n').filter(line => line.trim() !== '');
+        const recentLines = lines.slice(-limit).reverse();
+        return successResponse(res, recentLines, 'Log sistem berhasil diambil.');
     } catch (err) {
-        console.error('Fetch logs error:', err);
-        return errorResponse(res, 'Gagal mengambil log.', 500);
+        console.error('Fetch system logs error:', err);
+        return errorResponse(res, 'Gagal mengambil log sistem.', 500);
     }
 });
 
-// DELETE /api/logs — Clear the log file (Auth required)
+// DELETE /api/logs — Clear both audit trail and system log
 router.delete('/', authMiddleware, (req, res) => {
     try {
-        const filePath = logger.getLogFile();
-        if (fs.existsSync(filePath)) {
-            fs.writeFileSync(filePath, ''); // Truncate log file
-        }
-        logger.info('File log sistem telah dikosongkan oleh administrator.');
-        return successResponse(res, null, 'File log berhasil dikosongkan.');
+        const logPath = logger.getLogFile();
+        const auditPath = logger.getAuditFile();
+
+        if (fs.existsSync(logPath)) fs.writeFileSync(logPath, '');
+        if (fs.existsSync(auditPath)) fs.writeFileSync(auditPath, '');
+
+        logger.info('Semua file log sistem telah dikosongkan oleh administrator.');
+        return successResponse(res, null, 'Semua log berhasil dikosongkan.');
     } catch (err) {
         console.error('Clear logs error:', err);
         return errorResponse(res, 'Gagal mengosongkan log.', 500);
     }
 });
 
-// GET /api/logs/download — Download full log file (Auth required)
+// GET /api/logs/download — Download full system log file
 router.get('/download', authMiddleware, (req, res) => {
     try {
         const filePath = logger.getLogFile();
         if (!fs.existsSync(filePath) || fs.readFileSync(filePath, 'utf8').trim() === '') {
-            // Write a small placeholder log if it is empty so download doesn't fail
             logger.info('File log diunduh.');
         }
-        return res.download(filePath, 'app-system.log');
+        return res.download(filePath, 'hmtkbg-system.log');
     } catch (err) {
         console.error('Download logs error:', err);
         return res.status(500).json({ success: false, message: 'Gagal mengunduh file log.' });

@@ -6,6 +6,7 @@ const validate = require('../middleware/validate');
 const authMiddleware = require('../middleware/auth');
 const { createUploader, getStoragePath, getFileUrl, deleteFile } = require('../middleware/upload');
 const { successResponse, errorResponse, parsePagination } = require('../helpers/response');
+const logger = require('../helpers/logger');
 
 const router = express.Router();
 const upload = createUploader('galeri/fotos');
@@ -108,6 +109,7 @@ router.post(
             await db('galeris').insert(data);
             const row = await db('galeris').where('id', id).first();
 
+            logger.audit('membuat', 'galeri', req, { resourceId: id, changes: req.body });
             return successResponse(res, formatGaleri(row, req), 'Galeri berhasil ditambahkan.', 201);
         } catch (err) {
             console.error('Galeri store error:', err);
@@ -145,6 +147,7 @@ router.put(
             await db('galeris').where('id', req.params.id).update(updates);
             const updated = await db('galeris').where('id', req.params.id).first();
 
+            logger.audit('memperbarui', 'galeri', req, { resourceId: req.params.id });
             return successResponse(res, formatGaleri(updated, req), 'Galeri berhasil diperbarui.');
         } catch (err) {
             console.error('Galeri update error:', err);
@@ -160,6 +163,8 @@ router.delete('/:id', authMiddleware, async (req, res) => {
         if (!row) return errorResponse(res, 'Galeri tidak ditemukan.', 404);
 
         await db('galeris').where('id', req.params.id).update({ deleted_at: new Date() });
+
+        logger.audit('menghapus', 'galeri', req, { resourceId: req.params.id });
         return successResponse(res, null, 'Galeri berhasil dihapus.');
     } catch (err) {
         console.error('Galeri destroy error:', err);

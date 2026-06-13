@@ -5,6 +5,7 @@ const db = require('../config/database');
 const validate = require('../middleware/validate');
 const authMiddleware = require('../middleware/auth');
 const { successResponse, errorResponse, parsePagination } = require('../helpers/response');
+const logger = require('../helpers/logger');
 
 const router = express.Router();
 
@@ -119,6 +120,7 @@ router.post(
             };
             await db('kegiatan').insert(data);
             const row = await db('kegiatan').where({ id }).first();
+            logger.audit('membuat', 'kegiatan', req, { resourceId: id, changes: req.body });
             return successResponse(res, formatKegiatan(row), 'Kegiatan berhasil ditambahkan.', 201);
         } catch (err) {
             console.error('Kegiatan store error:', err);
@@ -155,6 +157,8 @@ router.put(
 
             await db('kegiatan').where({ id: req.params.id }).update(updates);
             const updated = await db('kegiatan').where({ id: req.params.id }).first();
+
+            logger.audit('memperbarui', 'kegiatan', req, { resourceId: req.params.id });
             return successResponse(res, formatKegiatan(updated), 'Kegiatan berhasil diperbarui.');
         } catch (err) {
             console.error('Kegiatan update error:', err);
@@ -169,6 +173,8 @@ router.delete('/:id', authMiddleware, async (req, res) => {
         const row = await db('kegiatan').where({ id: req.params.id }).whereNull('deleted_at').first();
         if (!row) return errorResponse(res, 'Kegiatan tidak ditemukan.', 404);
         await db('kegiatan').where({ id: req.params.id }).update({ deleted_at: new Date() });
+
+        logger.audit('menghapus', 'kegiatan', req, { resourceId: req.params.id });
         return successResponse(res, null, 'Kegiatan berhasil dihapus.');
     } catch (err) {
         console.error('Kegiatan destroy error:', err);

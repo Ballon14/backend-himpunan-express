@@ -7,6 +7,7 @@ const validate = require('../middleware/validate');
 const authMiddleware = require('../middleware/auth');
 const { createUploader, getStoragePath, getFileUrl, deleteFile } = require('../middleware/upload');
 const { successResponse, errorResponse, parsePagination } = require('../helpers/response');
+const logger = require('../helpers/logger');
 
 const router = express.Router();
 const upload = createUploader('berita/thumbnails');
@@ -156,6 +157,7 @@ router.post(
             await db('beritas').insert(data);
             const row = await db('beritas').where('id', id).first();
 
+            logger.audit('membuat', 'berita', req, { resourceId: id, changes: req.body });
             return successResponse(res, formatBerita(row, req), 'Berita berhasil ditambahkan.', 201);
         } catch (err) {
             console.error('Berita store error:', err);
@@ -200,6 +202,7 @@ router.put(
             await db('beritas').where('id', req.params.id).update(updates);
             const updated = await db('beritas').where('id', req.params.id).first();
 
+            logger.audit('memperbarui', 'berita', req, { resourceId: req.params.id });
             return successResponse(res, formatBerita(updated, req), 'Berita berhasil diperbarui.');
         } catch (err) {
             console.error('Berita update error:', err);
@@ -215,6 +218,8 @@ router.delete('/:id', authMiddleware, async (req, res) => {
         if (!row) return errorResponse(res, 'Berita tidak ditemukan.', 404);
 
         await db('beritas').where('id', req.params.id).update({ deleted_at: new Date() });
+
+        logger.audit('menghapus', 'berita', req, { resourceId: req.params.id });
         return successResponse(res, null, 'Berita berhasil dihapus.');
     } catch (err) {
         console.error('Berita destroy error:', err);

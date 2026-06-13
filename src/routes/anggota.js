@@ -6,6 +6,7 @@ const validate = require('../middleware/validate');
 const authMiddleware = require('../middleware/auth');
 const { createUploader, getStoragePath, getFileUrl, deleteFile } = require('../middleware/upload');
 const { successResponse, errorResponse, parsePagination } = require('../helpers/response');
+const logger = require('../helpers/logger');
 
 const router = express.Router();
 const upload = createUploader('anggota');
@@ -139,6 +140,7 @@ router.post(
             await db('anggotas').insert(data);
             const row = await db('anggotas').where('id', id).first();
 
+            logger.audit('membuat', 'anggota', req, { resourceId: id, changes: req.body });
             return successResponse(res, formatAnggota(row, req), 'Anggota berhasil ditambahkan.', 201);
         } catch (err) {
             console.error('Anggota store error:', err);
@@ -198,6 +200,7 @@ router.put(
             await db('anggotas').where('id', req.params.id).update(updates);
             const updated = await db('anggotas').where('id', req.params.id).first();
 
+            logger.audit('memperbarui', 'anggota', req, { resourceId: req.params.id });
             return successResponse(res, formatAnggota(updated, req), 'Anggota berhasil diperbarui.');
         } catch (err) {
             console.error('Anggota update error:', err);
@@ -214,6 +217,7 @@ router.delete('/:id', authMiddleware, async (req, res) => {
 
         await db('anggotas').where('id', req.params.id).update({ deleted_at: new Date() });
 
+        logger.audit('menghapus', 'anggota', req, { resourceId: req.params.id });
         return successResponse(res, null, 'Anggota berhasil dihapus.');
     } catch (err) {
         console.error('Anggota destroy error:', err);

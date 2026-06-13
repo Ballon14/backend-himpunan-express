@@ -6,6 +6,7 @@ const validate = require('../middleware/validate');
 const authMiddleware = require('../middleware/auth');
 const { createUploader, getStoragePath, getFileUrl, deleteFile } = require('../middleware/upload');
 const { successResponse, errorResponse, parsePagination } = require('../helpers/response');
+const logger = require('../helpers/logger');
 
 const router = express.Router();
 const upload = createUploader('merchandise');
@@ -131,6 +132,7 @@ router.post(
             };
             await db('merchandise').insert(data);
             const row = await db('merchandise').where({ id }).first();
+            logger.audit('membuat', 'merchandise', req, { resourceId: id, changes: req.body });
             return successResponse(res, formatMerchandise(row, req), 'Merchandise berhasil ditambahkan.', 201);
         } catch (err) {
             console.error('Merchandise store error:', err);
@@ -182,6 +184,8 @@ router.put(
 
             await db('merchandise').where({ id: req.params.id }).update(updates);
             const updated = await db('merchandise').where({ id: req.params.id }).first();
+
+            logger.audit('memperbarui', 'merchandise', req, { resourceId: req.params.id });
             return successResponse(res, formatMerchandise(updated, req), 'Merchandise berhasil diperbarui.');
         } catch (err) {
             console.error('Merchandise update error:', err);
@@ -196,6 +200,8 @@ router.delete('/:id', authMiddleware, async (req, res) => {
         const row = await db('merchandise').where({ id: req.params.id }).whereNull('deleted_at').first();
         if (!row) return errorResponse(res, 'Merchandise tidak ditemukan.', 404);
         await db('merchandise').where({ id: req.params.id }).update({ deleted_at: new Date() });
+
+        logger.audit('menghapus', 'merchandise', req, { resourceId: req.params.id });
         return successResponse(res, null, 'Merchandise berhasil dihapus.');
     } catch (err) {
         console.error('Merchandise destroy error:', err);
