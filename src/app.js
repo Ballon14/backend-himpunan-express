@@ -74,29 +74,123 @@ const loginLimiter = rateLimit({
     legacyHeaders: false,
 });
 
+// ─── Health Check Cache ─────────────────────────────────────────────────────
+let healthCheckCache = null;
+let healthCheckCacheTime = 0;
+const HEALTH_CACHE_TTL = 10000; // 10 seconds
+
 // ─── Health Check ───────────────────────────────────────────────────────────
 app.get('/api/health', async (req, res) => {
+    const startTime = Date.now();
+    const now = Date.now();
+
+    // Return cached result if still fresh
+    if (healthCheckCache && (now - healthCheckCacheTime) < HEALTH_CACHE_TTL) {
+        return res
+            .set('X-Cache', 'HIT')
+            .json(healthCheckCache);
+    }
+
     try {
-        await db.raw('SELECT 1');
-        return res.json({
-            success: true,
-            message: 'Server is healthy',
+        const fs = require('fs');
+        const uploadsDir = path.join(__dirname, '../uploads');
+
+        // Check database connectivity
+        let dbStatus = 'disconnected';
+        let dbError = null;
+        try {
+            await db.raw('SELECT 1');
+            dbStatus = 'connected';
+        } catch (dbErr) {
+            dbError = dbErr.message;
+            logger.warn('Health check: Database connection failed', { error: dbErr.message });
+        }
+
+        // Check uploads directory is writable
+        let fsStatus = 'healthy';
+        let fsError = null;
+        try {
+            if (!fs.existsSync(uploadsDir)) {
+                fs.mkdirSync(uploadsDir, { recursive: true });
+            }
+            // Test write permission
+            const testFile = path.join(uploadsDir, '.health-check');
+            fs.writeFileSync(testFile, Date.now().toString());
+            fs.unlinkSync(testFile);
+        } catch (fsErr) {
+            fsStatus = 'unhealthy';
+            fsError = fsErr.message;
+            logger.warn('Health check: File system check failed', { error: fsErr.message });
+        }
+
+        // Calculate metrics
+        const memoryUsage = process.memoryUsage();
+        const memoryPercent = (memoryUsage.heapUsed / memoryUsage.heapTotal) * 100;
+        const responseTime = Date.now() - startTime;
+
+        // Determine overall status
+        const isHealthy = dbStatus === 'connected' && fsStatus === 'healthy';
+        const hasWarnings = dbStatus !== 'connected' || fsStatus !== 'healthy';
+
+        const healthStatus = {
+            success: isHealthy,
+            message: isHealthy
+                ? 'Server is fully operational'
+                : hasWarnings
+                    ? 'Server is operational with warnings'
+                    : 'Server is down',
             data: {
-                uptime: process.uptime(),
+                status: isHealthy ? 'healthy' : hasWarnings ? 'degraded' : 'critical',
                 timestamp: new Date().toISOString(),
-                environment: process.env.NODE_ENV || 'development',
-                database: 'connected',
+                uptime: Math.floor(process.uptime()),
+                environment: process.env.NODE_ENV || 'production',
+                responseTime: `${responseTime}ms`,
+                dependencies: {
+                    database: {
+                        status: dbStatus,
+                        error: dbError || undefined,
+                    },
+                    fileSystem: {
+                        status: fsStatus,
+                        error: fsError || undefined,
+                    },
+                },
+                system: {
+                    memory: {
+                        heapUsed: `${Math.round(memoryUsage.heapUsed / 1024 / 1024)}MB`,
+                        heapTotal: `${Math.round(memoryUsage.heapTotal / 1024 / 1024)}MB`,
+                        percentage: `${Math.round(memoryPercent)}%`,
+                    },
+                    nodeVersion: process.version,
+                    platform: process.platform,
+                },
             },
-        });
+        };
+
+        // Cache the result
+        healthCheckCache = healthStatus;
+        healthCheckCacheTime = now;
+
+        // Send response with appropriate status code
+        const statusCode = isHealthy ? 200 : hasWarnings ? 206 : 503;
+        return res
+            .status(statusCode)
+            .set('X-Cache', 'MISS')
+            .json(healthStatus);
     } catch (err) {
-        console.error('Health check DB error:', err.message);
-        return res.status(503).json({
+        logger.error('Health check endpoint error', {
+            message: err.message,
+            stack: err.stack,
+        });
+
+        return res.status(500).json({
             success: false,
-            message: 'Server is running but database is unreachable',
+            message: 'Health check failed',
             data: {
-                uptime: process.uptime(),
+                status: 'error',
                 timestamp: new Date().toISOString(),
-                database: 'disconnected',
+                uptime: Math.floor(process.uptime()),
+                error: err.message,
             },
         });
     }
