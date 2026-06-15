@@ -94,6 +94,18 @@ const EXPORTABLE_TABLES = {
         ],
         excludeFields: ['id', 'foto', 'deleted_at', 'updated_at'],
     },
+    prestasis: {
+        label: 'Prestasi',
+        columns: [
+            { header: 'Judul', key: 'judul', width: 30 },
+            { header: 'Deskripsi', key: 'deskripsi', width: 40 },
+            { header: 'Kategori', key: 'kategori', width: 18 },
+            { header: 'Penerima', key: 'penerima', width: 25 },
+            { header: 'Tanggal', key: 'tanggal', width: 18 },
+            { header: 'Dibuat', key: 'created_at', width: 20 },
+        ],
+        excludeFields: ['id', 'foto', 'deleted_at', 'updated_at'],
+    },
 };
 
 // ─── Helper: Build Excel Workbook for single table ───────────────────────────

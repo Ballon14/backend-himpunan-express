@@ -19,6 +19,7 @@ const merchandiseRoutes = require('./routes/merchandise');
 const dashboardRoutes = require('./routes/dashboard');
 const strukturRoutes = require('./routes/struktur');
 const logsRoutes = require('./routes/logs');
+const prestasiRoutes = require('./routes/prestasi');
 const logger = require('./helpers/logger');
 const authMiddleware = require('./middleware/auth');
 const { errorResponse } = require('./helpers/response');
@@ -209,6 +210,7 @@ app.use('/api/program-kerja', programKerjaRoutes);
 app.use('/api/galeri', galeriRoutes);
 app.use('/api/kegiatan', kegiatanRoutes);
 app.use('/api/merchandise', merchandiseRoutes);
+app.use('/api/prestasi', prestasiRoutes);
 app.use('/api/struktur', strukturRoutes);
 app.use('/api/logs', logsRoutes);
 

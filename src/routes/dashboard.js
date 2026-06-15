@@ -7,11 +7,12 @@ const router = express.Router();
 // ─── Dashboard Statistics ────────────────────────────────────────────────────
 router.get('/stats', async (req, res) => {
     try {
-        const [anggota, berita, programKerja, galeri, pesanUnread, pesanTotal] = await Promise.all([
+        const [anggota, berita, programKerja, galeri, prestasi, pesanUnread, pesanTotal] = await Promise.all([
             db('anggotas').whereNull('deleted_at').count('* as count').first(),
             db('beritas').whereNull('deleted_at').count('* as count').first(),
             db('program_kerjas').whereNull('deleted_at').count('* as count').first(),
             db('galeris').whereNull('deleted_at').count('* as count').first(),
+            db('prestasis').whereNull('deleted_at').count('* as count').first(),
             db('pesans').whereNull('deleted_at').where('is_read', false).count('* as count').first(),
             db('pesans').whereNull('deleted_at').count('* as count').first(),
         ]);
@@ -21,6 +22,7 @@ router.get('/stats', async (req, res) => {
             berita: Number(berita.count),
             program_kerja: Number(programKerja.count),
             galeri: Number(galeri.count),
+            prestasi: Number(prestasi.count),
             pesan_unread: Number(pesanUnread.count),
             pesan_total: Number(pesanTotal.count),
         }, 'Dashboard stats berhasil diambil.');
