@@ -14,6 +14,7 @@ const programKerjaRoutes = require('./routes/programKerja');
 const galeriRoutes = require('./routes/galeri');
 const pesanRoutes = require('./routes/pesan');
 const exportRoutes = require('./routes/export');
+const importRoutes = require('./routes/import');
 const kegiatanRoutes = require('./routes/kegiatan');
 const merchandiseRoutes = require('./routes/merchandise');
 const dashboardRoutes = require('./routes/dashboard');
@@ -224,6 +225,7 @@ app.use('/api/pesan', (req, res, next) => {
 
 // Admin-only routes (auth required)
 app.use('/api/export', authMiddleware, exportRoutes);
+app.use('/api/import', authMiddleware, importRoutes);
 app.use('/api/dashboard', authMiddleware, dashboardRoutes);
 
 // ─── 404 Handler ────────────────────────────────────────────────────────────
