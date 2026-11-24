@@ -21,6 +21,7 @@ const dashboardRoutes = require('./routes/dashboard');
 const strukturRoutes = require('./routes/struktur');
 const logsRoutes = require('./routes/logs');
 const prestasiRoutes = require('./routes/prestasi');
+const settingsRoutes = require('./routes/settings');
 const logger = require('./helpers/logger');
 const authMiddleware = require('./middleware/auth');
 const { errorResponse } = require('./helpers/response');
@@ -217,6 +218,7 @@ app.use('/api/merchandise', merchandiseRoutes);
 app.use('/api/prestasi', prestasiRoutes);
 app.use('/api/struktur', strukturRoutes);
 app.use('/api/logs', logsRoutes);
+app.use('/api/settings', settingsRoutes);
 
 // Pesan — POST (public) has rate limiter, GET/DELETE (admin) does not
 app.use('/api/pesan', (req, res, next) => {
