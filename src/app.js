@@ -29,6 +29,9 @@ const db = require('./config/database');
 const app = express();
 const PORT = process.env.PORT || 8000;
 
+// Trust reverse proxy (Nginx / Cloudflare)
+app.set('trust proxy', 1);
+
 // ─── Middleware ──────────────────────────────────────────────────────────────
 
 // Security headers
