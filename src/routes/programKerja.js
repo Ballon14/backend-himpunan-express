@@ -4,8 +4,9 @@ const { v4: uuidv4 } = require('uuid');
 const db = require('../config/database');
 const validate = require('../middleware/validate');
 const authMiddleware = require('../middleware/auth');
-const { createUploader, getStoragePath, getFileUrl, deleteFile } = require('../middleware/upload');
+const { createUploader, getStoragePath, getFileUrl, deleteFile, optimizeImage } = require('../middleware/upload');
 const { successResponse, errorResponse, parsePagination } = require('../helpers/response');
+const { cleanHtml } = require('../helpers/sanitize');
 const logger = require('../helpers/logger');
 
 const router = express.Router();
@@ -83,6 +84,7 @@ router.post(
     '/',
     authMiddleware,
     upload.single('foto'),
+    optimizeImage(),
     [
         body('nama_program').notEmpty().withMessage('Nama program wajib diisi.').isLength({ max: 255 }),
         body('deskripsi').notEmpty().withMessage('Deskripsi wajib diisi.'),
@@ -99,7 +101,7 @@ router.post(
             const data = {
                 id,
                 nama_program: req.body.nama_program,
-                deskripsi: req.body.deskripsi,
+                deskripsi: cleanHtml(req.body.deskripsi),
                 foto: req.file ? getStoragePath('program-kerja', req.file.filename) : null,
                 tanggal_mulai: req.body.tanggal_mulai,
                 tanggal_selesai: req.body.tanggal_selesai,
@@ -125,6 +127,7 @@ router.put(
     '/:id',
     authMiddleware,
     upload.single('foto'),
+    optimizeImage(),
     [
         body('nama_program').optional().isLength({ max: 255 }),
         body('deskripsi').optional(),
@@ -140,7 +143,7 @@ router.put(
 
             const updates = { updated_at: new Date() };
             if (req.body.nama_program !== undefined) updates.nama_program = req.body.nama_program;
-            if (req.body.deskripsi !== undefined) updates.deskripsi = req.body.deskripsi;
+            if (req.body.deskripsi !== undefined) updates.deskripsi = cleanHtml(req.body.deskripsi);
             if (req.body.tanggal_mulai !== undefined) updates.tanggal_mulai = req.body.tanggal_mulai;
             if (req.body.tanggal_selesai !== undefined) updates.tanggal_selesai = req.body.tanggal_selesai;
             if (req.body.status !== undefined) updates.status = req.body.status;

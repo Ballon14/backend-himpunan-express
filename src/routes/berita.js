@@ -5,8 +5,9 @@ const slugify = require('slugify');
 const db = require('../config/database');
 const validate = require('../middleware/validate');
 const authMiddleware = require('../middleware/auth');
-const { createUploader, getStoragePath, getFileUrl, deleteFile } = require('../middleware/upload');
+const { createUploader, getStoragePath, getFileUrl, deleteFile, optimizeImage } = require('../middleware/upload');
 const { successResponse, errorResponse, parsePagination } = require('../helpers/response');
+const { cleanHtml } = require('../helpers/sanitize');
 const logger = require('../helpers/logger');
 
 const router = express.Router();
@@ -129,6 +130,7 @@ router.post(
     '/',
     authMiddleware,
     upload.single('thumbnail'),
+    optimizeImage(),
     [
         body('judul').notEmpty().withMessage('Judul wajib diisi.').isLength({ max: 255 }),
         body('isi').notEmpty().withMessage('Isi wajib diisi.'),
@@ -146,7 +148,7 @@ router.post(
                 id,
                 judul: req.body.judul,
                 slug,
-                isi: req.body.isi,
+                isi: cleanHtml(req.body.isi),
                 thumbnail: req.file ? getStoragePath('berita/thumbnails', req.file.filename) : null,
                 published_at: req.body.published_at || null,
                 status: req.body.status || 'draft',
@@ -171,6 +173,7 @@ router.put(
     '/:id',
     authMiddleware,
     upload.single('thumbnail'),
+    optimizeImage(),
     [
         body('judul').optional().isLength({ max: 255 }),
         body('isi').optional(),
@@ -190,7 +193,7 @@ router.put(
                     updates.slug = slugify(req.body.judul, { lower: true, strict: true }) + '-' + randomStr();
                 }
             }
-            if (req.body.isi !== undefined) updates.isi = req.body.isi;
+            if (req.body.isi !== undefined) updates.isi = cleanHtml(req.body.isi);
             if (req.body.published_at !== undefined) updates.published_at = req.body.published_at || null;
             if (req.body.status !== undefined) updates.status = req.body.status;
 

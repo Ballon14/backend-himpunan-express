@@ -78,6 +78,13 @@ const IMPORTABLE_TABLES = {
         uniqueField: null,
         hasUUID: true,
     },
+    prestasis: {
+        label: 'Prestasi',
+        requiredFields: ['judul', 'kategori', 'tanggal'],
+        allFields: ['judul', 'deskripsi', 'kategori', 'penerima', 'tanggal'],
+        uniqueField: null,
+        hasUUID: true,
+    },
 };
 
 // ─── Helper: Parse CSV buffer ────────────────────────────────────────────────
@@ -110,6 +117,42 @@ async function parseCSV(buffer) {
             .replace(/\s+/g, '_')    // Ganti spasi dengan underscore
             .replace(/_+/g, '_')     // Hapus underscore ganda
             .replace(/^_|_$/g, '');  // Hapus underscore di awal/akhir
+    });
+
+    const rows = [];
+    for (let i = 2; i <= sheet.rowCount; i++) {
+        const row = sheet.getRow(i);
+        const obj = {};
+        let hasValue = false;
+        row.eachCell((cell, colNumber) => {
+            const key = headers[colNumber];
+            if (key) {
+                obj[key] = cell.value;
+                if (cell.value !== null && cell.value !== '') hasValue = true;
+            }
+        });
+        if (hasValue) rows.push(obj);
+    }
+    return rows;
+}
+
+// ─── Helper: Parse XLSX buffer ───────────────────────────────────────────────
+async function parseXLSX(buffer) {
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(buffer);
+    const sheet = workbook.worksheets[0];
+    if (!sheet || sheet.rowCount < 2) return [];
+
+    const headerRow = sheet.getRow(1);
+    const headers = [];
+    headerRow.eachCell((cell, colNumber) => {
+        headers[colNumber] = String(cell.value || '')
+            .trim()
+            .toLowerCase()
+            .replace(/\*/g, '')
+            .replace(/\s+/g, '_')
+            .replace(/_+/g, '_')
+            .replace(/^_|_$/g, '');
     });
 
     const rows = [];
@@ -182,6 +225,18 @@ function cleanRow(rawRow, config) {
             } else {
                 row[field] = Boolean(value);
             }
+        } else if (field === 'status') {
+            const s = String(value).trim().toLowerCase();
+            if (config.label === 'Berita') {
+                row[field] = ['draft', 'published'].includes(s) ? s : 'draft';
+            } else if (config.label === 'Program Kerja') {
+                row[field] = ['perencanaan', 'berjalan', 'selesai', 'dibatalkan'].includes(s) ? s : 'perencanaan';
+            } else {
+                row[field] = s;
+            }
+        } else if (value instanceof Date) {
+            // Format dates properly for MySQL DATE or DATETIME
+            row[field] = value.toISOString().slice(0, 19).replace('T', ' ');
         } else if (field === 'harga') {
             row[field] = parseInt(value) || 0;
         } else {
@@ -212,6 +267,8 @@ router.post('/:table', upload.single('file'), async (req, res) => {
 
         if (filename.endsWith('.json')) {
             rawRows = parseJSON(req.file.buffer);
+        } else if (filename.endsWith('.xlsx') || filename.endsWith('.xls')) {
+            rawRows = await parseXLSX(req.file.buffer);
         } else {
             // CSV
             rawRows = await parseCSV(req.file.buffer);
@@ -357,6 +414,15 @@ router.get('/:table/template', async (req, res) => {
         });
 
         const timestamp = new Date().toISOString().slice(0, 10);
+        const format = (req.query.format || 'csv').toLowerCase();
+
+        if (format === 'xlsx' || format === 'excel') {
+            res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+            res.setHeader('Content-Disposition', `attachment; filename="Template_${config.label}_${timestamp}.xlsx"`);
+            await workbook.xlsx.write(res);
+            return res.end();
+        }
+
         res.setHeader('Content-Type', 'text/csv');
         res.setHeader('Content-Disposition', `attachment; filename="Template_${config.label}_${timestamp}.csv"`);
         await workbook.csv.write(res);

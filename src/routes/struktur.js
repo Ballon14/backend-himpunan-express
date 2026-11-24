@@ -2,7 +2,7 @@ const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const authMiddleware = require('../middleware/auth');
-const { createUploader, getFileUrl } = require('../middleware/upload');
+const { createUploader, getFileUrl, optimizeImage } = require('../middleware/upload');
 const { successResponse, errorResponse } = require('../helpers/response');
 
 const router = express.Router();
@@ -41,7 +41,7 @@ router.get('/', (req, res) => {
 });
 
 // POST /api/struktur — Upload new organogram image (Auth required)
-router.post('/', authMiddleware, upload.single('bagan'), (req, res) => {
+router.post('/', authMiddleware, upload.single('bagan'), optimizeImage({ maxWidth: 2560, quality: 85 }), (req, res) => {
     try {
         if (!req.file) {
             return errorResponse(res, 'File gambar wajib diunggah.', 400);

@@ -221,6 +221,15 @@ router.get('/:table', async (req, res) => {
             return res.json({ table: config.label, exported_at: new Date().toISOString(), total: data.length, data });
         }
 
+        // Format Excel XLSX
+        if (format === 'xlsx' || format === 'excel') {
+            const { workbook } = await buildWorkbook(table, config);
+            res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+            res.setHeader('Content-Disposition', `attachment; filename="${filename}.xlsx"`);
+            await workbook.xlsx.write(res);
+            return res.end();
+        }
+
         // Format CSV
         if (format === 'csv') {
             const { workbook } = await buildWorkbook(table, config);
@@ -261,6 +270,10 @@ router.get('/', async (req, res) => {
                     2
                 );
                 archive.append(jsonContent, { name: `${filename}.json` });
+            } else if (format === 'xlsx' || format === 'excel') {
+                const { workbook } = await buildWorkbook(tableName, config);
+                const buffer = await workbook.xlsx.writeBuffer();
+                archive.append(buffer, { name: `${filename}.xlsx` });
             } else if (format === 'csv') {
                 const { workbook } = await buildWorkbook(tableName, config);
                 const buffer = await workbook.csv.writeBuffer();

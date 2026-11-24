@@ -4,7 +4,7 @@ const { v4: uuidv4 } = require('uuid');
 const db = require('../config/database');
 const validate = require('../middleware/validate');
 const authMiddleware = require('../middleware/auth');
-const { createUploader, getStoragePath, getFileUrl, deleteFile } = require('../middleware/upload');
+const { createUploader, getStoragePath, getFileUrl, deleteFile, optimizeImage } = require('../middleware/upload');
 const { successResponse, errorResponse, parsePagination } = require('../helpers/response');
 const logger = require('../helpers/logger');
 
@@ -100,6 +100,7 @@ router.post(
     '/',
     authMiddleware,
     upload.array('foto', 10),
+    optimizeImage(),
     [
         body('nama').notEmpty().withMessage('Nama wajib diisi.').isLength({ max: 255 }),
         body('deskripsi').optional({ values: 'falsy' }),
@@ -146,6 +147,7 @@ router.put(
     '/:id',
     authMiddleware,
     upload.array('foto', 10),
+    optimizeImage(),
     [
         body('nama').optional().isLength({ max: 255 }),
         body('deskripsi').optional({ values: 'falsy' }),

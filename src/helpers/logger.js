@@ -65,7 +65,7 @@ function log(level, message, meta = null) {
  * @param {object|null} meta - extra info: { resourceId, changes }
  */
 function audit(action, resource, req, meta = null) {
-    const actor = meta?.actor || req.user?.name || req.user?.email || 'Unknown user';
+    const actor = meta?.actor || req?.user?.name || req?.user?.email || 'Unknown user';
     const resourceLabel = resource || 'data';
     const resourceId = meta?.resourceId || null;
 
@@ -76,10 +76,10 @@ function audit(action, resource, req, meta = null) {
         action,
         resource: resourceLabel,
         resourceId,
-        ip: req.ip,
-        method: req.method,
-        path: req.originalUrl || req.url,
-        changes: sanitizeBody(meta?.changes || req.body) || undefined,
+        ip: req?.ip || '127.0.0.1',
+        method: req?.method || 'CLI',
+        path: req ? (req.originalUrl || req.url || '-') : 'CLI',
+        changes: sanitizeBody(meta?.changes || req?.body) || undefined,
     };
 
     // Write JSON line to audit file

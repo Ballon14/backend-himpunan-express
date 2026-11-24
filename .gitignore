@@ -2,5 +2,6 @@ node_modules/
 .env
 uploads/
 
-logs/app.log
-logs/error.log
+logs/
+agent.md
+test-import.js

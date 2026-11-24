@@ -81,4 +81,76 @@ function deleteFile(storagePath) {
     }
 }
 
-module.exports = { createUploader, getStoragePath, getFileUrl, deleteFile };
+let sharp = null;
+try {
+    sharp = require('sharp');
+} catch (e) {
+    console.warn('Sharp module not loaded, image optimization will be skipped.');
+}
+
+/**
+ * Optimizes an uploaded image file (auto-rotate, resize max dimension, re-encode with high quality).
+ * @param {object} file - Express multer file object
+ * @param {object} options - { maxWidth: 1920, quality: 82 }
+ */
+async function optimizeUploadedFile(file, options = { maxWidth: 1920, quality: 82 }) {
+    if (!sharp || !file || !file.path) return file;
+    try {
+        const ext = path.extname(file.path).toLowerCase();
+        if (['.jpg', '.jpeg', '.png', '.webp'].includes(ext)) {
+            const tempFile = `${file.path}.opt`;
+            let pipeline = sharp(file.path).rotate();
+            const meta = await pipeline.metadata();
+
+            if (meta.width && meta.width > options.maxWidth) {
+                pipeline = pipeline.resize({ width: options.maxWidth, withoutEnlargement: true });
+            }
+
+            if (ext === '.jpg' || ext === '.jpeg') {
+                pipeline = pipeline.jpeg({ quality: options.quality, mozjpeg: true });
+            } else if (ext === '.png') {
+                pipeline = pipeline.png({ compressionLevel: 8 });
+            } else if (ext === '.webp') {
+                pipeline = pipeline.webp({ quality: options.quality });
+            }
+
+            await pipeline.toFile(tempFile);
+            if (fs.existsSync(tempFile)) {
+                fs.unlinkSync(file.path);
+                fs.renameSync(tempFile, file.path);
+            }
+        }
+    } catch (err) {
+        console.warn('Image optimization skipped for', file.path, ':', err.message);
+    }
+    return file;
+}
+
+/**
+ * Express middleware to optimize uploaded single or multiple files after multer.
+ */
+const optimizeImage = (options = { maxWidth: 1920, quality: 82 }) => async (req, res, next) => {
+    try {
+        if (req.file) {
+            await optimizeUploadedFile(req.file, options);
+        }
+        if (req.files) {
+            const list = Array.isArray(req.files) ? req.files : Object.values(req.files).flat();
+            for (const f of list) {
+                await optimizeUploadedFile(f, options);
+            }
+        }
+        next();
+    } catch (err) {
+        next(err);
+    }
+};
+
+module.exports = {
+    createUploader,
+    getStoragePath,
+    getFileUrl,
+    deleteFile,
+    optimizeUploadedFile,
+    optimizeImage,
+};
