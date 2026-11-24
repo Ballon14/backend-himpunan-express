@@ -1,6 +1,7 @@
 node_modules/
 .env
 uploads/
+backups/
 
 logs/
 agent.md

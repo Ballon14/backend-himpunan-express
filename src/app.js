@@ -22,6 +22,8 @@ const strukturRoutes = require('./routes/struktur');
 const logsRoutes = require('./routes/logs');
 const prestasiRoutes = require('./routes/prestasi');
 const settingsRoutes = require('./routes/settings');
+const backupRoutes = require('./routes/backup');
+const { initBackupScheduler } = require('./helpers/backupService');
 const logger = require('./helpers/logger');
 const authMiddleware = require('./middleware/auth');
 const { errorResponse } = require('./helpers/response');
@@ -231,6 +233,7 @@ app.use('/api/pesan', (req, res, next) => {
 // Admin-only routes (auth required)
 app.use('/api/export', authMiddleware, exportRoutes);
 app.use('/api/import', authMiddleware, importRoutes);
+app.use('/api/backup', authMiddleware, backupRoutes);
 app.use('/api/dashboard', authMiddleware, dashboardRoutes);
 
 // ─── 404 Handler ────────────────────────────────────────────────────────────
@@ -261,6 +264,8 @@ app.use((err, req, res, next) => {
 // ─── Start Server ───────────────────────────────────────────────────────────
 const server = app.listen(PORT, () => {
     logger.info(`🚀 Express server running on http://localhost:${PORT}`);
+    // Initialize automated weekly backup scheduler
+    initBackupScheduler();
 });
 
 // ─── Graceful Shutdown ──────────────────────────────────────────────────────
